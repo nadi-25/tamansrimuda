@@ -7,13 +7,27 @@
 </head>
 <body>
   <!-- Video autoplay contoh --!>
+  <div style="width:100%; height:100%; aspect-ratio:16/9;">
   <iframe 
-  src="https://player.vimeo.com/video/1127521919?autoplay=1&loop=1&background=1" 
-  frameborder="0" 
-  allow="autoplay; fullscreen; picture-in-picture" 
-  allowfullscreen 
-  style="width:100%; height:100%; aspect-ratio:16/9;">
-</iframe>
+    id="vimeoVideo"
+    src="https://player.vimeo.com/video/1127521919?autoplay=1&muted=0&background=1"
+    frameborder="0"
+    allow="autoplay; fullscreen; picture-in-picture"
+    allowfullscreen
+    style="width:100%; height:100%;">
+  </iframe>
+</div>
+
+<script>
+  // Fake loop: reload video bila tamat
+  const iframe = document.getElementById('vimeoVideo');
+  const player = new Vimeo.Player(iframe);
+
+  player.on('ended', function() {
+    // Main semula dari mula
+    player.setCurrentTime(0).then(() => player.play());
+  });
+</script>
 
 </body>
 </html>
