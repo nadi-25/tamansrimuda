@@ -39,28 +39,37 @@
 
 <script src="https://player.vimeo.com/api/player.js"></script>
 <script>
-  // Tempoh video: 2 minit 58 saat
-  const videoDuration = 178;
+  const videoDuration = 178; // 2 minit 58 saat
   const iframe = document.getElementById('vimeoVideo');
   const player = new Vimeo.Player(iframe);
+  let loopCount = 0;
 
-  // Cuba unmute selepas 3 saat (mainan pertama)
+  // Cuba unmute selepas 3 saat (autoplay dibenarkan)
   setTimeout(() => {
     player.setVolume(1).catch(() => {
       console.log('TV block unmute without interaction');
     });
   }, 3000);
 
-  // Ulang video bila tamat (loop dengan bunyi hidup)
-  let loopCount = 0;
+  // Cuba API loop dahulu (kalau TV sokong)
+  try {
+    player.on('ended', () => {
+      player.setCurrentTime(0).then(() => {
+        player.play();
+        player.setVolume(1);
+        console.log('Loop guna API berjaya');
+      });
+    });
+  } catch(e) {
+    console.log('API loop tak disokong');
+  }
 
+  // Backup loop (auto reload)
   setInterval(() => {
     loopCount++;
-    // Asal: autoplay + muted (untuk kali pertama)
-    // Selepas itu: autoplay tanpa muted supaya bunyi keluar
-    const baseUrl = "https://player.vimeo.com/video/1127521919?autoplay=1&background=1";
-    iframe.src = baseUrl;
-    console.log("Loop ke-" + loopCount + " dimulakan");
+    const currentSrc = `https://player.vimeo.com/video/1127521919?autoplay=1&background=1`;
+    iframe.src = currentSrc;
+    console.log('Fallback reload loop #' + loopCount);
   }, videoDuration * 1000);
 </script>
 
