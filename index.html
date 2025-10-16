@@ -29,24 +29,23 @@
 </head>
 <body>
   <div id="videoContainer">
-  <iframe 
-    id="vimeoVideo"
-    src="https://player.vimeo.com/video/1127521919?autoplay=1&muted=0&background=1"
-    frameborder="0"
-    allow="autoplay; fullscreen; picture-in-picture"
-    allowfullscreen>
-  </iframe>
+ <iframe 
+  id="vimeoVideo"
+  src="https://player.vimeo.com/video/123456789?autoplay=1&muted=1&background=1"
+  allow="autoplay; fullscreen; picture-in-picture"
+  allowfullscreen>
+</iframe>
 </div>
 
-<script src="https://player.vimeo.com/api/player.js"></script>
 <script>
-  // Fake loop supaya video ulang automatik di TV
-  const iframe = document.getElementById('vimeoVideo');
-  const player = new Vimeo.Player(iframe);
+  // Tempoh video: 2 minit 58 saat (178 saat)
+  const videoDuration = 178; 
 
-  player.on('ended', function() {
-    player.setCurrentTime(0).then(() => player.play());
-  });
+  // Ulang semula bila video tamat
+  setInterval(() => {
+    const iframe = document.getElementById('vimeoVideo');
+    iframe.src = iframe.src; // reload semula keseluruhan video
+  }, videoDuration * 1000);
 </script>
 
 </body>
