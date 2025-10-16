@@ -39,22 +39,24 @@
 
 <script src="https://player.vimeo.com/api/player.js"></script>
 <script>
-  // Tempoh video: 2 minit 58 saat
-  const videoDuration = 177;
   const iframe = document.getElementById('vimeoVideo');
   const player = new Vimeo.Player(iframe);
+  const videoDuration = 178; // 2 minit 58 saat
 
-  // Cuba unmute selepas 3 saat
+  // Hidupkan bunyi selepas 3 saat
   setTimeout(() => {
     player.setVolume(1).catch(() => {
       console.log('TV block unmute without interaction');
     });
   }, 3000);
 
-  // Ulang video bila tamat
-  setInterval(() => {
-    iframe.src = iframe.src;
-  }, videoDuration * 1000);
+  // Guna event 'ended' untuk ulang video tanpa reload iframe
+  player.on('ended', () => {
+    player.setCurrentTime(0).then(() => {
+      player.play();
+      player.setVolume(1); // pastikan bunyi aktif semula setiap loop
+    });
+  });
 </script>
 
 </body>
