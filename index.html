@@ -39,39 +39,100 @@
 
 <script src="https://player.vimeo.com/api/player.js"></script>
 <script>
+  const VIDEO_ID = '1127521919'; // tukar ke ID awak
   const videoDuration = 178; // 2 minit 58 saat
   const iframe = document.getElementById('vimeoVideo');
-  const player = new Vimeo.Player(iframe);
-  let loopCount = 0;
 
-  // Cuba unmute selepas 3 saat (autoplay dibenarkan)
+  // mula dengan src yang ada muted=1 supaya autoplay awal dibenarkan
+  iframe.src = `https://player.vimeo.com/video/${VIDEO_ID}?autoplay=1&muted=1&background=1`;
+
+  let player = new Vimeo.Player(iframe);
+  let loopCount = 0;
+  let fallbackTimer = null;
+
+  // cuba unmute & set volume selepas main pertama
   setTimeout(() => {
-    player.setVolume(1).catch(() => {
-      console.log('TV block unmute without interaction');
+    player.setVolume(1).then(() => {
+      console.log('Initial unmute succeeded');
+    }).catch(err => {
+      console.log('Initial unmute blocked:', err);
     });
   }, 3000);
 
-  // Cuba API loop dahulu (kalau TV sokong)
+  // cuba API loop dahulu (kalau sokong)
   try {
     player.on('ended', () => {
-      player.setCurrentTime(0).then(() => {
-        player.play();
-        player.setVolume(1);
-        console.log('Loop guna API berjaya');
-      });
+      console.log('ended event fired — using API loop');
+      player.setCurrentTime(0).then(() => player.play().then(() => {
+        // pastikan bunyi hidup
+        player.setVolume(1).catch(()=>{});
+      })).catch(()=>{});
     });
   } catch(e) {
-    console.log('API loop tak disokong');
+    console.log('API loop not supported:', e);
   }
 
-  // Backup loop (auto reload)
-  setInterval(() => {
+  // ----- Fallback: reload iframe setiap videoDuration saat -----
+  // Fungsi untuk reload dan selepas load, re-init player dan cuba unmute+play
+  function reloadAndEnsureSound() {
     loopCount++;
-    const currentSrc = `https://player.vimeo.com/video/1127521919?autoplay=1&background=1`;
-    iframe.src = currentSrc;
     console.log('Fallback reload loop #' + loopCount);
-  }, videoDuration * 1000);
-</script>
 
+    // set src tanpa muted param (minta bunyi)
+    const newSrc = `https://player.vimeo.com/video/${VIDEO_ID}?autoplay=1&background=1`;
+    // assign new src to force reload
+    iframe.src = newSrc;
+
+    // clear any existing player reference
+    try { player.unload && player.unload(); } catch(e){}
+
+    // tunggu iframe load event — kemudian re-init player
+    // gunakan once listener supaya tidak bercampur
+    const onLoad = () => {
+      // small delay to let player.js handshake
+      setTimeout(() => {
+        player = new Vimeo.Player(iframe);
+
+        // cuba play + setVolume (beberapa panggilan untuk cuba elak race)
+        player.play().then(() => {
+          player.setVolume(1).then(() => {
+            console.log('Fallback: play + unmute succeeded after reload');
+          }).catch(err => {
+            console.log('Fallback: setVolume blocked after reload', err);
+          });
+        }).catch(err => {
+          console.log('Fallback: play blocked after reload', err);
+          // cuba lagi selepas 500ms
+          setTimeout(() => {
+            player.setVolume(1).catch(()=>{});
+            player.play().catch(()=>{});
+          }, 500);
+        });
+
+        // remove the load listener
+        iframe.removeEventListener('load', onLoad);
+      }, 250); // 250ms delay
+    };
+
+    iframe.addEventListener('load', onLoad);
+  }
+
+  // set interval fallback (backup kalau ended event tidak jalan)
+  fallbackTimer = setInterval(reloadAndEnsureSound, videoDuration * 1000);
+
+  // OPTIONAL: jika loop berjaya via API, kita boleh hentikan fallback
+  // (kita cuba detect API loop melalui console log; untuk automatik, set flag dalam event 'ended')
+  try {
+    player.on('ended', () => {
+      console.log('Detected API ended — stopping fallback reload');
+      if (fallbackTimer) {
+        clearInterval(fallbackTimer);
+        fallbackTimer = null;
+      }
+    });
+  } catch (e) {
+    // ignore
+  }
+</script>
 </body>
 </html>
