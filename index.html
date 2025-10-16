@@ -31,24 +31,31 @@
   <div id="videoContainer">
  <iframe 
   id="vimeoVideo"
-  src="https://player.vimeo.com/video/1127521919?autoplay=1&muted=0&background=1"
+  src="https://player.vimeo.com/video/1127521919?autoplay=1&muted=1&background=1"
   allow="autoplay; fullscreen; picture-in-picture"
   allowfullscreen>
 </iframe>
 </div>
 
+<script src="https://player.vimeo.com/api/player.js"></script>
 <script>
-  // Tempoh video: 2 minit 58 saat (177 saat)
-  const videoDuration = 177; 
+  // Tempoh video: 2 minit 58 saat
+  const videoDuration = 177;
+  const iframe = document.getElementById('vimeoVideo');
+  const player = new Vimeo.Player(iframe);
 
-  // Ulang semula bila video tamat
+  // Cuba unmute selepas 3 saat
+  setTimeout(() => {
+    player.setVolume(1).catch(() => {
+      console.log('TV block unmute without interaction');
+    });
+  }, 3000);
+
+  // Ulang video bila tamat
   setInterval(() => {
-    const iframe = document.getElementById('vimeoVideo');
-    iframe.src = iframe.src; // reload semula keseluruhan video
+    iframe.src = iframe.src;
   }, videoDuration * 1000);
 </script>
-
-  <script src="https://player.vimeo.com/api/player.js"></script>
 
 </body>
 </html>
