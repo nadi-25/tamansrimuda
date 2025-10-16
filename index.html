@@ -28,10 +28,6 @@
 </style>
 </head>
 <body>
-
-<div id="introScreen">
-  <div>🌊 Selamat Datang ke Nadi Taman Sri Muda 🌊</div>
-</div>
   
   <div id="videoContainer">
  <iframe 
@@ -44,72 +40,100 @@
 
 <script src="https://player.vimeo.com/api/player.js"></script>
 <script>
-  const VIDEO_ID = '1127521919'; // <-- ganti dengan ID video awak
+  const VIDEO_ID = '1127521919'; // tukar ke ID awak
   const videoDuration = 178; // 2 minit 58 saat
   const iframe = document.getElementById('vimeoVideo');
-  const introScreen = document.getElementById('introScreen');
 
-  let player;
+  // mula dengan src yang ada muted=1 supaya autoplay awal dibenarkan
+  iframe.src = `https://player.vimeo.com/video/${VIDEO_ID}?autoplay=1&muted=1&background=1`;
+
+  let player = new Vimeo.Player(iframe);
   let loopCount = 0;
   let fallbackTimer = null;
 
-  // --- Fungsi untuk main suara bot Indonesia ---
-  function playIntroVoice(text, onEnd) {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'id-ID';
-    utterance.pitch = 1;
-    utterance.rate = 1;
-    utterance.volume = 1;
+  // cuba unmute & set volume selepas main pertama
+  setTimeout(() => {
+    player.setVolume(1).then(() => {
+      console.log('Initial unmute succeeded');
+    }).catch(err => {
+      console.log('Initial unmute blocked:', err);
+    });
+  }, 3000);
 
-    utterance.onend = () => {
-      if (typeof onEnd === 'function') onEnd();
-    };
-    speechSynthesis.speak(utterance);
+  // cuba API loop dahulu (kalau sokong)
+  try {
+    player.on('ended', () => {
+      console.log('ended event fired — using API loop');
+      player.setCurrentTime(0).then(() => player.play().then(() => {
+        // pastikan bunyi hidup
+        player.setVolume(1).catch(()=>{});
+      })).catch(()=>{});
+    });
+  } catch(e) {
+    console.log('API loop not supported:', e);
   }
 
-  // --- Fungsi untuk mula video selepas intro ---
-  function startVimeoVideo() {
-    introScreen.style.opacity = 0; // fade out gambar
-    setTimeout(() => { introScreen.style.display = 'none'; }, 1000);
+  // ----- Fallback: reload iframe setiap videoDuration saat -----
+  // Fungsi untuk reload dan selepas load, re-init player dan cuba unmute+play
+  function reloadAndEnsureSound() {
+    loopCount++;
+    console.log('Fallback reload loop #' + loopCount);
 
-    iframe.src = `https://player.vimeo.com/video/${VIDEO_ID}?autoplay=1&muted=1&background=1`;
-    player = new Vimeo.Player(iframe);
+    // set src tanpa muted param (minta bunyi)
+    const newSrc = `https://player.vimeo.com/video/${VIDEO_ID}?autoplay=1&background=1`;
+    // assign new src to force reload
+    iframe.src = newSrc;
 
-    // cuba unmute selepas 3 saat
-    setTimeout(() => {
-      player.setVolume(1).catch(() => console.log('TV block unmute'));
-    }, 3000);
+    // clear any existing player reference
+    try { player.unload && player.unload(); } catch(e){}
 
-    // API loop
-    try {
-      player.on('ended', () => {
-        player.setCurrentTime(0).then(() => {
-          player.play();
-          player.setVolume(1);
+    // tunggu iframe load event — kemudian re-init player
+    // gunakan once listener supaya tidak bercampur
+    const onLoad = () => {
+      // small delay to let player.js handshake
+      setTimeout(() => {
+        player = new Vimeo.Player(iframe);
+
+        // cuba play + setVolume (beberapa panggilan untuk cuba elak race)
+        player.play().then(() => {
+          player.setVolume(1).then(() => {
+            console.log('Fallback: play + unmute succeeded after reload');
+          }).catch(err => {
+            console.log('Fallback: setVolume blocked after reload', err);
+          });
+        }).catch(err => {
+          console.log('Fallback: play blocked after reload', err);
+          // cuba lagi selepas 500ms
+          setTimeout(() => {
+            player.setVolume(1).catch(()=>{});
+            player.play().catch(()=>{});
+          }, 500);
         });
-      });
-    } catch(e){}
 
-    // fallback reload setiap duration
-    fallbackTimer = setInterval(() => {
-      loopCount++;
-      console.log('Loop ke-' + loopCount);
-      iframe.src = `https://player.vimeo.com/video/${VIDEO_ID}?autoplay=1&background=1`;
+        // remove the load listener
+        iframe.removeEventListener('load', onLoad);
+      }, 250); // 250ms delay
+    };
 
-      iframe.addEventListener('load', () => {
-        setTimeout(() => {
-          player = new Vimeo.Player(iframe);
-          player.play().then(()=>player.setVolume(1)).catch(()=>{});
-        }, 300);
-      }, { once: true });
-    }, videoDuration * 1000);
+    iframe.addEventListener('load', onLoad);
   }
 
-  // --- Jalankan intro dulu ---
-  playIntroVoice("Selamat datang ke Nadi Taman Sri Muda", () => {
-    console.log("Suara intro selesai, memulai video...");
-    startVimeoVideo();
-  });
+  // set interval fallback (backup kalau ended event tidak jalan)
+  fallbackTimer = setInterval(reloadAndEnsureSound, videoDuration * 1000);
+
+  // OPTIONAL: jika loop berjaya via API, kita boleh hentikan fallback
+  // (kita cuba detect API loop melalui console log; untuk automatik, set flag dalam event 'ended')
+  try {
+    player.on('ended', () => {
+      console.log('Detected API ended — stopping fallback reload');
+      if (fallbackTimer) {
+        clearInterval(fallbackTimer);
+        fallbackTimer = null;
+      }
+    });
+  } catch (e) {
+    // ignore
+  }
 </script>
 </body>
 </html>
