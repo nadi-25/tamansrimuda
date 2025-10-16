@@ -31,7 +31,7 @@
   <div id="videoContainer">
  <iframe 
   id="vimeoVideo"
-  src="https://player.vimeo.com/video/1127521919?autoplay=1&muted=0&background=1"
+  src="https://player.vimeo.com/video/1127521919?autoplay=1&muted=1&background=1"
   allow="autoplay; fullscreen; picture-in-picture"
   allowfullscreen>
 </iframe>
@@ -39,37 +39,28 @@
 
 <script src="https://player.vimeo.com/api/player.js"></script>
 <script>
-  const videoDuration = 178; // 2 minit 58 saat
+  // Tempoh video: 2 minit 58 saat
+  const videoDuration = 178;
   const iframe = document.getElementById('vimeoVideo');
   const player = new Vimeo.Player(iframe);
-  let loopCount = 0;
 
-  // Cuba unmute selepas 3 saat (autoplay dibenarkan)
+  // Cuba unmute selepas 3 saat (mainan pertama)
   setTimeout(() => {
     player.setVolume(1).catch(() => {
       console.log('TV block unmute without interaction');
     });
   }, 3000);
 
-  // Cuba API loop dahulu (kalau TV sokong)
-  try {
-    player.on('ended', () => {
-      player.setCurrentTime(0).then(() => {
-        player.play();
-        player.setVolume(1);
-        console.log('Loop guna API berjaya');
-      });
-    });
-  } catch(e) {
-    console.log('API loop tak disokong');
-  }
+  // Ulang video bila tamat (loop dengan bunyi hidup)
+  let loopCount = 0;
 
-  // Backup loop (auto reload)
   setInterval(() => {
     loopCount++;
-    const currentSrc = `https://player.vimeo.com/video/123456789?autoplay=1&background=1`;
-    iframe.src = currentSrc;
-    console.log('Fallback reload loop #' + loopCount);
+    // Asal: autoplay + muted (untuk kali pertama)
+    // Selepas itu: autoplay tanpa muted supaya bunyi keluar
+    const baseUrl = "https://player.vimeo.com/video/123456789?autoplay=1&background=1";
+    iframe.src = baseUrl;
+    console.log("Loop ke-" + loopCount + " dimulakan");
   }, videoDuration * 1000);
 </script>
 
